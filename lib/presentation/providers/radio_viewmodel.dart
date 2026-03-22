@@ -1,47 +1,54 @@
 import 'dart:async';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:volume_controller/volume_controller.dart';
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/radio_station.dart';
 
 class RadioViewModel extends ChangeNotifier {
-  final AudioPlayer _audioPlayer;
+  final AudioHandler _audioHandler;
+  final VolumeController _volumeController = VolumeController();
 
   RadioStation _currentStation;
   bool _isBuffering = false;
   String? _errorMessage;
-  StreamSubscription<bool>? _playingSubscription;
-  StreamSubscription<ProcessingState>? _processingSubscription;
+  double _volume = 1.0;
+  StreamSubscription<PlaybackState>? _playbackSubscription;
 
-  RadioViewModel({AudioPlayer? audioPlayer})
-    : _audioPlayer = audioPlayer ?? AudioPlayer(),
+  RadioViewModel({required AudioHandler audioHandler})
+    : _audioHandler = audioHandler,
       _currentStation = const RadioStation(
-        name: 'Radio Stream',
+        name: AppConstants.stationName,
+        description: AppConstants.stationDescription,
         streamUrl: AppConstants.streamUrl,
       ) {
-    _listenToPlayingStatus();
-    _listenToProcessingState();
+    _initVolume();
+    _listenToPlaybackState();
   }
 
   RadioStation get currentStation => _currentStation;
   bool get isPlaying => _currentStation.isPlaying;
   bool get isBuffering => _isBuffering;
   String? get errorMessage => _errorMessage;
+  double get volume => _volume;
 
-  void _listenToPlayingStatus() {
-    _playingSubscription = _audioPlayer.playingStream.listen((playing) {
-      _currentStation = _currentStation.copyWith(isPlaying: playing);
+  void _initVolume() async {
+    try {
+      _volume = await _volumeController.getVolume();
       notifyListeners();
-    });
+    } catch (_) {
+      _volume = 1.0;
+    }
   }
 
-  void _listenToProcessingState() {
-    _processingSubscription = _audioPlayer.processingStateStream.listen((
-      state,
-    ) {
+  void _listenToPlaybackState() {
+    _playbackSubscription = _audioHandler.playbackState.listen((playbackState) {
+      _currentStation = _currentStation.copyWith(
+        isPlaying: playbackState.playing,
+      );
       _isBuffering =
-          state == ProcessingState.loading ||
-          state == ProcessingState.buffering;
+          playbackState.processingState == AudioProcessingState.loading ||
+          playbackState.processingState == AudioProcessingState.buffering;
       notifyListeners();
     });
   }
@@ -57,8 +64,7 @@ class RadioViewModel extends ChangeNotifier {
   Future<void> play() async {
     _errorMessage = null;
     try {
-      await _audioPlayer.setUrl(_currentStation.streamUrl);
-      await _audioPlayer.play();
+      await _audioHandler.play();
     } catch (e) {
       _errorMessage = 'Failed to play stream: $e';
       notifyListeners();
@@ -67,7 +73,7 @@ class RadioViewModel extends ChangeNotifier {
 
   Future<void> pause() async {
     try {
-      await _audioPlayer.pause();
+      await _audioHandler.pause();
     } catch (e) {
       _errorMessage = 'Failed to pause: $e';
       notifyListeners();
@@ -76,11 +82,17 @@ class RadioViewModel extends ChangeNotifier {
 
   Future<void> stop() async {
     try {
-      await _audioPlayer.stop();
+      await _audioHandler.stop();
     } catch (e) {
       _errorMessage = 'Failed to stop: $e';
       notifyListeners();
     }
+  }
+
+  Future<void> setVolume(double value) async {
+    _volumeController.setVolume(value);
+    _volume = value;
+    notifyListeners();
   }
 
   void setStation(RadioStation station) {
@@ -90,9 +102,7 @@ class RadioViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    _playingSubscription?.cancel();
-    _processingSubscription?.cancel();
-    _audioPlayer.dispose();
+    _playbackSubscription?.cancel();
     super.dispose();
   }
 }
