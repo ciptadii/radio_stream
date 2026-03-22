@@ -259,10 +259,13 @@ class _RadioScreenState extends State<RadioScreen> {
         return GestureDetector(
           onTap: viewModel.isBuffering ? null : viewModel.togglePlayPause,
           child: viewModel.isBuffering
-              ? const SizedBox(
+              ? SizedBox(
                   width: 40,
                   height: 40,
-                  child: CircularProgressIndicator(strokeWidth: 3),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Colors.grey.shade400,
+                  ),
                 )
               : Icon(
                   viewModel.isPlaying ? Icons.pause : Icons.play_arrow,

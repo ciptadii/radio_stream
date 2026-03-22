@@ -38,6 +38,7 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
+          debugShowCheckedModeBanner: false,
           title: 'Radio Stream',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
