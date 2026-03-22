@@ -2,19 +2,17 @@ import 'package:flutter/material.dart';
 
 class ThemeSwitch extends StatelessWidget {
   final bool isDark;
-  final ValueChanged<bool> onChanged;
+  final VoidCallback onChanged;
+
   const ThemeSwitch({super.key, required this.isDark, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.light_mode),
-        Switch(
-          value: isDark,
-          onChanged: onChanged,
-        ),
+        Switch(value: isDark, onChanged: (_) => onChanged()),
         const Icon(Icons.dark_mode),
       ],
     );
